@@ -11,13 +11,15 @@ function lastweeklog() {
 }
 
 lastweeklog | awk '{ if($2=="200") print $14 }' | sed 's/"//' \
-	| sort | uniq -c | sort -nr | \
+	| sort | uniq -c | sort -nr \
+	| awk '{ if($1>1) print $1,$2 }' | gzip - >$LOGDIR/filefreq-$today.gz
+
+zcat $LOGDIR/filefreq-$today.gz | \
 while read count filename; do
 	if [[ "$filename" == /* ]] && [ -f "$WWWROOT$filename" ]; then
 		echo $count $(stat -c '%s %Z' "$WWWROOT$filename") $filename
 	fi
-done >$LOGDIR/filefreq-$today
-
-cat $LOGDIR/filefreq-$today | awk "{sum+=\$2; if(sum>$cachesize) break; print \$4}" | sort >$LOGDIR/tocache-$today
+done | \
+awk "{sum+=\$2; if(sum>$cachesize) break; print \$4}" | sort >$LOGDIR/tocache-$today
 
 rsync -a --delete --files-from=$LOGDIR/tocache-$today $WWWROOT $CACHEROOT
