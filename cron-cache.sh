@@ -17,7 +17,7 @@ lastweeklog | awk '{ if($2=="200") print $14 }' | sed 's/[" ]//g' \
 zcat $LOGDIR/filefreq-$today.gz | \
 while read count filename; do
 	if [[ "$filename" == /* ]] && [ -f "$WWWROOT$filename" ]; then
-		echo $count $(stat -c '%s %Z' "$WWWROOT$filename") $filename
+		echo $count $(stat -L -c '%s %Z' "$WWWROOT$filename") $filename
 	fi
 done | \
 awk "{sum+=\$2; if(sum>$cachesize) exit; print \$4}" | sort >$LOGDIR/tocache-$today
