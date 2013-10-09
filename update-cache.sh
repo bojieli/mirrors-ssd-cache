@@ -13,6 +13,6 @@ TMPFILE=$(mktemp)
 cachepath="$CACHEROOT/$mirror"
 find $cachepath | cut -c $((${#cachepath}+1))- >$TMPFILE
 
-rsync -a --delete --files-from=$TMPFILE $WWWROOT/$mirror $CACHEROOT/$mirror
+rsync -a --copy-links --delete --files-from=$TMPFILE $WWWROOT/$mirror $CACHEROOT/$mirror
 
 rm -f $TMPFILE

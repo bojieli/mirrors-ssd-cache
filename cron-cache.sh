@@ -22,4 +22,4 @@ while read count filename; do
 done | \
 awk "{sum+=\$2; if(sum>$cachesize) exit; print \$4}" | sort >$LOGDIR/tocache-$today
 
-rsync -a --delete --files-from=$LOGDIR/tocache-$today $WWWROOT $CACHEROOT
+rsync -a --copy-links --delete --files-from=$LOGDIR/tocache-$today $WWWROOT $CACHEROOT
