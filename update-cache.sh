@@ -30,7 +30,7 @@ if [ -z "$mirror" ]; then # full update
 	sync_from_file_list $tocache_list
 else # update one mirror
 	tmpfile=$(mktemp)
-	cat $tocache_list | grep "^/$mirror" | cut -c $((${#mirror}+2))- >$tmpfile
+	cat $tocache_list | grep "^/$mirror/" | cut -c $((${#mirror}+2))- >$tmpfile
 	sync_from_file_list $tmpfile
 	rm -f $tmpfile
 fi
