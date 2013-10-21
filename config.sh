@@ -46,6 +46,17 @@ function remove_expired_files()
 		rm -rf $CACHEROOT$f
 	done
 }
+
+# There are actually 3 file lists:
+#  - cache_list: files to be cached (param 1 of this func)
+#  - WWWROOT: authoritative source
+#  - CACHEROOT: cache files
+# After sync, CACHEROOT should contain up-to-date files in and only in the intersection of cache_list and WWWROOT.
+# So comes the algorithm:
+#  1. Remove files in CACHEROOT but not in cache_list
+#  2. Remove files in CACHEROOT but not in WWWROOT or not up-to-date
+#  3. Copy non-cached files in cache_list to CACHEROOT, if it exists in WWWROOT
+#
 function sync_from_file_list()
 {
 	cache_list=$1
