@@ -16,7 +16,6 @@ function timestamp()
 }
 function atomic_cp()
 {
-	echo "$2"
 	dstdir=$(dirname $2)
 	if [ ! -d "$dstdir" ]; then
 		mkdir -p $dstdir
@@ -31,7 +30,7 @@ function remove_uncached_files()
 		<(cat $1 | sort | uniq) \
 		<(find $CACHEROOT -type f | cut -c $((${#CACHEROOT}+1))- | sort | uniq) \
 	| while read f; do
-		echo $CACHEROOT$f
+		echo $f
 		rm -rf $CACHEROOT$f
 	done
 }
@@ -42,7 +41,7 @@ function remove_expired_files()
 		if [ -f "$WWWROOT$f" ] && [ "$(timestamp $WWWROOT$f)" == "$(timestamp $CACHEROOT$f)" ]; then
 			continue
 		fi
-		echo $CACHEROOT$f
+		echo $f
 		rm -rf $CACHEROOT$f
 	done
 }
@@ -92,6 +91,7 @@ function sync_from_file_list()
 			rm -rf $CACHEROOT$f
 		fi
 		if [ ! -f "$CACHEROOT$f" ]; then # file not cached
+			echo $f
 			atomic_cp $WWWROOT$f $CACHEROOT$f
 		fi
 		# cached but expired files have been removed
