@@ -12,18 +12,18 @@ if [ -z "$mirror" ]; then
 fi
 if [ "$mirror" == "all" ]; then
 	mirror=""
-fi
-
-tmpfile=$(mktemp)
-cachepath="$CACHEROOT/$mirror"
-find $cachepath | cut -c $((${#cachepath}+1))- >$tmpfile
-
-# if this file is run before today's cron...
-if [ -f "$LOGDIR/tocache-$today" ]; then
-	cat $LOGDIR/tocache-$today >>$tmpfile
+elif [ ! -d "$WWWROOT/$mirror" ]; then
+	echo "directory $WWWROOT/$mirror does not exist"
+	exit 1
 else
-	cat $LOGDIR/tocache-$(date --date="1 day ago" '+%Y%m%d') >>$tmpfile
+	WWWROOT=$WWWROOT/$mirror
+	CACHEROOT=$CACHEROOT/$mirror
 fi
 
-sync_from_file_list $tmpfile
-rm -f $tmpfile
+if [ -f "$LOGDIR/tocache-$today" ]; then
+	tocache_list=$LOGDIR/tocache-$today
+else # today's cron has not run...
+	tocache_list=$LOGDIR/tocache-$(date --date="1 day ago" '+%Y%m%d') 
+fi
+
+sync_from_file_list $tocache_list
