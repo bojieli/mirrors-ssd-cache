@@ -26,4 +26,12 @@ else # today's cron has not run...
 	tocache_list=$LOGDIR/tocache-$(date --date="1 day ago" '+%Y%m%d') 
 fi
 
-sync_from_file_list $tocache_list
+if [ -z "$mirror" ]; then # full update
+	sync_from_file_list $tocache_list
+else # update one mirror
+	tmpfile=$(mktemp)
+	cat $tocache_list | grep "^/$mirror" | cut -c $((${#mirror}+2))- >$tmpfile
+	sync_from_file_list $tmpfile
+	rm -f $tmpfile
+fi
+
