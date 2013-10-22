@@ -10,7 +10,8 @@ function lastweeklog() {
 	done
 }
 
-lastweeklog | awk '{ if($2=="200") print $14 }' | sed 's/[" ]//g' \
+lastweeklog | awk '{ if($2=="200") print $14 }' \
+	| sed 's/[" ]//g' | sed 's/[\/][\/]*/\//g' \
 	| sort | uniq -c | sort -nr \
 	| awk '{ if($1>1) print $1,$2 }' | gzip - >$LOGDIR/filefreq-$today.gz
 
