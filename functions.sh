@@ -8,7 +8,7 @@ function atomic_cp()
 	if [ ! -d "$dstdir" ]; then
 		mkdir -p $dstdir
 	fi
-	tmpfile=$(mktemp --tmpdir=$dstdir)
+	tmpfile=$(mktemp --tmpdir=$CACHETMPDIR)
 	cp -L --preserve=all $1 $tmpfile
 	mv $tmpfile $2
 }
@@ -53,6 +53,9 @@ function sync_from_file_list()
 	fi
 	if [ ! -d "$CACHEROOT" ]; then
 		mkdir -p $CACHEROOT
+	fi
+	if [ ! -d "$CACHETMPDIR" ]; then
+		mkdir -p $CACHETMPDIR
 	fi
 
 	lockfile -r0 -l 86400 $LOCKFILE 2>/dev/null
