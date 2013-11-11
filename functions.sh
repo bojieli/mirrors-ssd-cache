@@ -47,17 +47,18 @@ function remove_expired_files()
 function sync_from_file_list()
 {
 	cache_list=$1
-
-	if [ ! -d "$WWWROOT" ]; then
+	if [ ! -f "$cache_list" ]; then
+		echo "cache list $cache_list does not exist"
 		exit 1
 	fi
-	if [ ! -d "$CACHEROOT" ]; then
-		mkdir -p $CACHEROOT
+	if [ ! -d "$WWWROOT" ]; then
+		echo "WWWROOT $WWWROOT does not exist"
+		exit 1
 	fi
-	if [ ! -d "$CACHETMPDIR" ]; then
-		mkdir -p $CACHETMPDIR
-	fi
+	mkdir -p $CACHEROOT
+	mkdir -p $CACHETMPDIR
 
+	LOCKFILE=$CACHETMPDIR/sync.lock
 	lockfile -r0 -l 86400 $LOCKFILE 2>/dev/null
 	if [[ 0 -ne "$?" ]]; then
 		echo "Waiting for $LOCKFILE..."

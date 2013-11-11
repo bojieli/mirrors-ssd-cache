@@ -18,6 +18,7 @@ elif [ ! -d "$WWWROOT/$mirror" ]; then
 else
 	WWWROOT=$WWWROOT/$mirror
 	CACHEROOT=$CACHEROOT/$mirror
+	CACHETMPDIR=$CACHETMPDIR/$mirror
 fi
 
 if [ -f "$LOGDIR/tocache-$today" ]; then
