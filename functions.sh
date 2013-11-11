@@ -33,6 +33,10 @@ function remove_expired_files()
 		rm -rf $CACHEROOT$f
 	done
 }
+function echo_timestamp()
+{
+	date '+===== TIMESTAMP %s %F %T ====='
+}
 
 # There are actually 3 file lists:
 #  - cache_list: files to be cached (param 1 of this func)
@@ -61,19 +65,23 @@ function sync_from_file_list()
 	LOCKFILE=$CACHETMPDIR/sync.lock
 	lockfile -r0 -l 86400 $LOCKFILE 2>/dev/null
 	if [[ 0 -ne "$?" ]]; then
-		echo "Waiting for $LOCKFILE..."
+		echo_timestamp
+		echo "===== Waiting for $LOCKFILE ====="
 		lockfile -r-1 -l 86400 $LOCKFILE
 		if [[ 0 -ne "$?" ]]; then
 			exit 1
 		fi
 	fi
 
+	echo_timestamp
 	echo "===== Removing no longer cached (swapped out) files ====="
 	remove_uncached_files $cache_list
 
+	echo_timestamp
 	echo "===== Removing expired files ====="
 	remove_expired_files
 
+	echo_timestamp
 	echo "===== Synchronizing new files ====="
 	cat $cache_list | while read f; do
 		if [ ! -f "$WWWROOT$f" ]; then # source file not exist or is a directory
@@ -89,5 +97,6 @@ function sync_from_file_list()
 		# cached but expired files have been removed
 	done
 
+	echo_timestamp
 	rm -f $LOCKFILE
 }
