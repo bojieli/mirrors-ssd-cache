@@ -1,6 +1,6 @@
 function timestamp()
 {
-	stat -L -c '%X' $1
+	stat -L -c '%Y' $1
 }
 function atomic_cp()
 {
