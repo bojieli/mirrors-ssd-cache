@@ -3,14 +3,21 @@
 
 . $(dirname $0)/config.sh
 
-function lastweeklog() {
+function lastndaylog() {
 	cat $NGINXLOGDIR/access-f2.log-$today
-	for i in {1..6}; do
-		xzcat $NGINXLOGDIR/access-f2.log-$(date --date="$i days ago" '+%Y%m%d').xz
+	days=$(($1-1))
+	while true; do
+		xzcat $NGINXLOGDIR/access-f2.log-$(date --date="$days days ago" '+%Y%m%d').xz
+		days=$(($days-1))
+		[ $days -eq 0 ] && break
 	done
 }
 
-lastweeklog | awk '{ if($2=="200") print $14 }' \
+function lastweeklog() {
+	lastndaylog 7
+}
+
+lastndaylog 2 | awk '{ if($2=="200") print $14 }' \
 	| sed 's/[" ]//g' | sed 's/[\/][\/]*/\//g' \
 	| sort | uniq -c | sort -nr \
 	| awk '{ if($1>1) print $1,$2 }' | gzip - >$LOGDIR/filefreq-$today.gz
