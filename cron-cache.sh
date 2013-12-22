@@ -26,6 +26,8 @@ filelist=$LOGDIR/tocache-$today
 
 zcat $LOGDIR/filefreq-$today.gz | \
 while read count filename; do
+	# temporarily do not cache rubygems
+	[[ "$filename" == /rubygems* ]] && continue
 	if [[ "$filename" == /* ]] && [ -f "$WWWROOT$filename" ]; then
 		echo $count $(stat -L -c '%s %Z' "$WWWROOT$filename") $filename
 	fi
