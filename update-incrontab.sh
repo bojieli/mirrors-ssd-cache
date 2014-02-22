@@ -13,9 +13,9 @@ fi
 tmpfile=$(mktemp)
 cat $1 | sed 's/\/*[^\/]*\/*$//' | sort | uniq | \
 while read watchdir; do
-	# do not watch IN_MODIFY because rsync will write temp files many times
-	# and non-temp files will be atomically deleted or moved by rsync
-	echo $WWWROOT$watchdir IN_DELETE,IN_MOVE rm -rf $CACHEROOT$watchdir/\$#
+	# watch IN_MODIFY to fit non-standard sync scripts
+        # tradeoff: rsync will write temp files many times, generating many false events
+	echo $WWWROOT$watchdir IN_MODIFY,IN_DELETE,IN_MOVE rm -rf $CACHEROOT$watchdir/\$#
 done >$tmpfile
 
 incrontab $tmpfile
