@@ -34,6 +34,6 @@ while read count filename; do
 done | \
 awk "{sum+=\$2; if(sum>$cachesize) exit; print \$4}" | sort >$filelist
 
-./update-incrontab.sh $filelist
+$(dirname $0)/update-incrontab.sh $filelist
 
 sync_from_file_list $filelist
