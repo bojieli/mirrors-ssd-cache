@@ -18,5 +18,5 @@ while read watchdir; do
 	echo $WWWROOT$watchdir IN_MODIFY,IN_DELETE,IN_MOVE rm -rf $CACHEROOT$watchdir/\$#
 done >$tmpfile
 
-incrontab $tmpfile
+incrontab $tmpfile 2>&1
 rm -f $tmpfile
