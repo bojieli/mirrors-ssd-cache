@@ -31,7 +31,9 @@ function atomic_cp()
             mv $tmpfile $dstfile
         fi
 
-        ln -s $CACHEROOT$linktoname $CACHEROOT$dstfile 
+        # add --force. in case that the link has been modified 
+        # to point to other place
+        ln -sf $CACHEROOT$linktoname $CACHEROOT$dstfile 
     else
         cp --preserve=all $oriabspath $tmpfile
         mv $tmpfile $dstfile
@@ -43,7 +45,7 @@ function atomic_cp()
 function try_delete()
 {
     # FIXME:
-    # If you delete all the symbolic links that point to the same file, let's say F, after you try deleting file F.
+    # If you delete all the symbolic links that point to the same file, let's say F, after you try deleting file F,
     # file F will not be deleted, although it should be.
 
     f=$1
