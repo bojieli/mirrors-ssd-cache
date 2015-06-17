@@ -28,8 +28,17 @@ zcat $LOGDIR/filefreq-$today.gz | \
 while read count filename; do
 	# temporarily do not cache rubygems
 	[[ "$filename" == /rubygems* ]] && continue
+
+    ##### it seems that all filenames start with '/' 
 	if [[ "$filename" == /* ]] && [ -f "$WWWROOT$filename" ]; then
+	# what about
+    # if [ -f "$WWWROOT$filename" ]; then 
+    #####
+
+        ##### why should it print out the time since last status change then abandon it?
 		echo $count $(stat -L -c '%s %Z' "$WWWROOT$filename") $filename
+        #####
+
 	fi
 done | \
 awk "{sum+=\$2; if(sum>$cachesize) exit; print \$4}" | sort >$filelist

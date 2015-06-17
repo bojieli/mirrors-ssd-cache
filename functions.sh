@@ -2,16 +2,59 @@ function timestamp()
 {
 	stat -L -c '%Y' $1
 }
+
 function atomic_cp()
 {
 	dstdir=$(dirname $2)
 	if [ ! -d "$dstdir" ]; then
 		mkdir -p $dstdir
 	fi
+
 	tmpfile=$(mktemp --tmpdir=$CACHETMPDIR)
-	cp -L --preserve=all $1 $tmpfile
-	mv $tmpfile $2
+    #####
+	#cp -L --preserve=all $1 $tmpfile
+	#mv $tmpfile $2
+    #####
+
+    
+    ##### Explanation
+    # 1. find out the *REAL* path of $dstfile and store it in $oriabspath
+    # 2. if original file is a link, then
+    #        if the file that is pointed to has not been cached
+    #            1. copy the original file and the dirs that contains it to ssd cache
+    #            2. create a symbolic link in $dstfile and let it points to the cached original file
+    #        if the file has been cached
+    #            1. just create the link
+    #    if original file is an ordinary file
+    #        just copy
+    #####
+
+    #####
+    dstfile=$2
+
+    oriabspath="$(readlink -e $dstfile)"
+    [ -z $oriabspath ] && return  # broken link or file not exist. In genernal, should never get here
+
+    ORIGINROOT="${oriabspath%$dstfile}"
+
+    if [ $oriabspath != $ORIGINROOT$dstfile ]; then  # original file is a link
+        linktoname="${oriabspath#$ORIGINROOT}"
+        if [ ! -f $CACHEROOT$linktoname ]; then
+            linktodir="$(dirname $CACHEROOT$linktoname)"
+            [ ! -d "$linktodir" ] && mkdir -p "$linktodir"
+            cp --preserve=all $oriabspath $tmpfile
+            mv $tmpfile $dstfile
+        fi
+
+        # add --force. in case that the link has been modified to point to other place
+        ln -sf $CACHEROOT$linktoname $CACHEROOT$dstfile 
+    else
+        cp --preserve=all $oriabspath $tmpfile
+        mv $tmpfile $dstfile
+    fi
+    #####
 }
+
 function remove_uncached_files()
 {
 	diff --old-line-format='' --new-line-format='%L' --unchanged-line-format='' \
@@ -19,6 +62,12 @@ function remove_uncached_files()
 		<(find $CACHEROOT -type f | cut -c $((${#CACHEROOT}+1))- | sort | uniq) \
 	| while read f; do
 		echo $f
+
+        #####
+        # No matter it is a real file or a link, just remove it.
+        # try_files in nginx will handle the error case properly.
+        #####
+
 		rm -rf $CACHEROOT$f
 	done
 }
@@ -30,6 +79,12 @@ function remove_expired_files()
 			continue
 		fi
 		echo $f
+
+        #####
+        # No matter it is a real file or a link, just remove it.
+        # try_files in nginx will handle the error case properly.
+        #####
+
 		rm -rf $CACHEROOT$f
 	done
 }
@@ -74,6 +129,7 @@ function sync_from_file_list()
 	fi
 
 	echo_timestamp
+
 	echo "===== Removing no longer cached (swapped out) files ====="
 	remove_uncached_files $cache_list
 
@@ -82,14 +138,20 @@ function sync_from_file_list()
 	remove_expired_files
 
 	echo_timestamp
+
+    #####
+	echo "===== Removing broken links ====="
+    find $CACHEROOT -type l -xtype l -delete
+    #####
+
 	echo "===== Synchronizing new files ====="
 	cat $cache_list | while read f; do
-		if [ ! -f "$WWWROOT$f" ]; then # source file not exist or is a directory
-			continue
-		fi
+		[ ! -f "$WWWROOT$f" ] && continue # source file not exist or is a directory
+
 		if [ -d "$CACHEROOT$f" ]; then # it was a directory, now a file
 			rm -rf $CACHEROOT$f
 		fi
+
 		if [ ! -f "$CACHEROOT$f" ]; then # file not cached
 			echo $f
 			atomic_cp $WWWROOT$f $CACHEROOT$f
