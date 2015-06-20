@@ -11,7 +11,7 @@ if [ ! -d "$CACHEROOT" ] || [ ! -d "$WWWROOT" ]; then
 fi
 
 tmpfile=$(mktemp)
-cat $1 | sed 's/\/*[^\/]*\/*$//' | sort | uniq | \
+cat $1 | sed 's/\/*[^\/]*\/*$//' | sort -u | \
 while read watchdir; do
 	# watch IN_MODIFY to fit non-standard sync scripts
         # tradeoff: rsync will write temp files many times, generating many false events

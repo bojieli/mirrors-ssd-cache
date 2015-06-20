@@ -24,24 +24,39 @@ lastndaylog 2 | awk '{ if($2=="200") print $14 }' \
 
 filelist=$LOGDIR/tocache-$today
 
+declare -A FileSet
 zcat $LOGDIR/filefreq-$today.gz | \
 while read count filename; do
 	# temporarily do not cache rubygems
 	[[ "$filename" == /rubygems* ]] && continue
 
-    ##### it seems that all filenames start with '/' 
 	if [[ "$filename" == /* ]] && [ -f "$WWWROOT$filename" ]; then
-	# what about
-    # if [ -f "$WWWROOT$filename" ]; then 
-    #####
 
-        ##### why should it print out the time since last status change then abandon it?
-		echo $count $(stat -L -c '%s %Z' "$WWWROOT$filename") $filename
-        #####
+		#echo $count $(stat -L -c '%s %Z' "$WWWROOT$filename") $filename
 
+        oriabs="$(readlink -e $WWWROOT$filename)"
+        [[ -z $oriabs ]] && continue
+
+        if [ -L "$WWWROOT$filename" ]; then
+            if [[ -z ${FileSet[$oriabs]} ]]; then
+                echo $(stat -c '%s' "$oriabs") $filename
+                FileSet[$oriabs]='1'
+            else
+                echo $(stat -c '%s' "$WWWROOT$filename") $filename
+            fi
+        else
+            if [[ -z ${FileSet[$oriabs]} ]]; then
+                echo $(stat -c '%s' "$WWWROOT$filename") $filename
+                FileSet[$oriabs]='1'
+            fi
+        fi
 	fi
+
 done | \
-awk "{sum+=\$2; if(sum>$cachesize) exit; print \$4}" | sort >$filelist
+awk "{sum+=\$1; if(sum>$cachesize) exit; print \$2}" | sort >$filelist
+#awk "{sum+=\$2; if(sum>$cachesize) exit; print \$4}" | sort >$filelist
+
+unset FileSet
 
 $(dirname $0)/update-incrontab.sh $filelist
 
