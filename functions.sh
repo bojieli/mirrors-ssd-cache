@@ -1,15 +1,15 @@
 #!/bin/bash
 function timestamp()
 {
-	stat -L -c '%Y' $1
+    stat -L -c '%Y' $1
 }
 
 function atomic_cp()
 {
-	dstdir="$(dirname $2)"
-	if [ ! -d "$dstdir" ]; then
-		mkdir -p "$dstdir"
-	fi
+    dstdir="$(dirname $2)"
+    if [ ! -d "$dstdir" ]; then
+        mkdir -p "$dstdir"
+    fi
 
     ##### Explanation
     # 1. $oriabspath stands for the *REAL* path of $dstfile
@@ -84,31 +84,31 @@ function remove_uncached_files()
         fi
     done
 
-	diff --old-line-format='' --new-line-format='%L' --unchanged-line-format='' \
-		<(cat $tmpfile | sort -u) \
-		<(find $CACHEROOT -type f -o -type l | cut -c $((${#CACHEROOT}+1))- | sort -u) \
-	| while read f; do
+    diff --old-line-format='' --new-line-format='%L' --unchanged-line-format='' \
+        <(cat $tmpfile | sort -u) \
+        <(find $CACHEROOT -type f -o -type l | cut -c $((${#CACHEROOT}+1))- | sort -u) \
+    | while read f; do
 
-		echo $f
-		rm -rf "$CACHEROOT$f"
-	done
+        echo $f
+        rm -rf "$CACHEROOT$f"
+    done
     #rm $tmpfile
 }
 function remove_expired_files()
 {
-	find $CACHEROOT -type f -o -type l | cut -c $((${#CACHEROOT}+1))- \
-	| while read f; do
-		if [ -f "$WWWROOT$f" ] && [ "$(timestamp $WWWROOT$f)" == "$(timestamp $CACHEROOT$f)" ]; then
-			continue
-		fi
+    find $CACHEROOT -type f -o -type l | cut -c $((${#CACHEROOT}+1))- \
+    | while read f; do
+        if [ -f "$WWWROOT$f" ] && [ "$(timestamp $WWWROOT$f)" == "$(timestamp $CACHEROOT$f)" ]; then
+            continue
+        fi
 
-		echo $f
-		rm -rf "$CACHEROOT$f"
-	done
+        echo $f
+        rm -rf "$CACHEROOT$f"
+    done
 }
 function echo_timestamp()
 {
-	date '+===== TIMESTAMP %s %F %T ====='
+    date '+===== TIMESTAMP %s %F %T ====='
 }
 
 # There are actually 3 file lists:
@@ -123,61 +123,61 @@ function echo_timestamp()
 #
 function sync_from_file_list()
 {
-	cache_list=$1
-	if [ ! -f "$cache_list" ]; then
-		echo "cache list $cache_list does not exist"
-		exit 1
-	fi
-	if [ ! -d "$WWWROOT" ]; then
-		echo "WWWROOT $WWWROOT does not exist"
-		exit 1
-	fi
-	mkdir -p $CACHEROOT
-	mkdir -p $CACHETMPDIR
+    cache_list=$1
+    if [ ! -f "$cache_list" ]; then
+        echo "cache list $cache_list does not exist"
+        exit 1
+    fi
+    if [ ! -d "$WWWROOT" ]; then
+        echo "WWWROOT $WWWROOT does not exist"
+        exit 1
+    fi
+    mkdir -p $CACHEROOT
+    mkdir -p $CACHETMPDIR
 
-	LOCKFILE=$CACHETMPDIR/sync.lock
-	lockfile -r0 -l 86400 $LOCKFILE 2>/dev/null
-	if [[ 0 -ne "$?" ]]; then
-		echo_timestamp
-		echo "===== Waiting for $LOCKFILE ====="
-		lockfile -r-1 -l 86400 $LOCKFILE
-		if [[ 0 -ne "$?" ]]; then
-			exit 1
-		fi
-	fi
+    LOCKFILE=$CACHETMPDIR/sync.lock
+    lockfile -r0 -l 86400 $LOCKFILE 2>/dev/null
+    if [[ 0 -ne "$?" ]]; then
+        echo_timestamp
+        echo "===== Waiting for $LOCKFILE ====="
+        lockfile -r-1 -l 86400 $LOCKFILE
+        if [[ 0 -ne "$?" ]]; then
+            exit 1
+        fi
+    fi
 
-	echo_timestamp
+    echo_timestamp
 
-	echo "===== Removing no longer cached (swapped out) files ====="
-	remove_uncached_files $cache_list
+    echo "===== Removing no longer cached (swapped out) files ====="
+    remove_uncached_files $cache_list
 
-	echo_timestamp
-	echo "===== Removing expired files ====="
-	remove_expired_files
+    echo_timestamp
+    echo "===== Removing expired files ====="
+    remove_expired_files
 
-	echo_timestamp
+    echo_timestamp
 
-	echo "===== Removing broken links ====="
+    echo "===== Removing broken links ====="
     find $CACHEROOT -type l -xtype l -print -delete
 
-	echo_timestamp
+    echo_timestamp
 
-	echo "===== Synchronizing new files ====="
-	cat $cache_list | while read f; do
+    echo "===== Synchronizing new files ====="
+    cat $cache_list | while read f; do
         # source file not exist or is a directory
-		[ ! -f "$WWWROOT$f" ] && continue
+        [ ! -f "$WWWROOT$f" ] && continue
 
         # it was a directory, now a file
-		[ -d "$CACHEROOT$f" ] && rm -rf $CACHEROOT$f
+        [ -d "$CACHEROOT$f" ] && rm -rf $CACHEROOT$f
 
         # file not cached
-		if [ ! -f "$CACHEROOT$f" ]; then
-			echo $f
-			atomic_cp $WWWROOT$f $CACHEROOT$f
-		fi
-		# cached but expired files have been removed
-	done
+        if [ ! -f "$CACHEROOT$f" ]; then
+            echo $f
+            atomic_cp $WWWROOT$f $CACHEROOT$f
+        fi
+        # cached but expired files have been removed
+    done
 
-	echo_timestamp
-	rm -f $LOCKFILE
+    echo_timestamp
+    rm -f $LOCKFILE
 }
