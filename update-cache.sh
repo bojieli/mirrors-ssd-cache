@@ -5,34 +5,34 @@
 
 . $(dirname $0)/config.sh
 
-mirror=$1
+mirror="${1%/}"
 if [ -z "$mirror" ]; then
-	echo "please specify mirror name"
-	exit 1
+    echo "please specify mirror name"
+    exit 1
 fi
 if [ "$mirror" == "all" ]; then
-	mirror=""
+    mirror=""
 elif [ ! -d "$WWWROOT/$mirror" ]; then
-	echo "directory $WWWROOT/$mirror does not exist"
-	exit 1
+    echo "directory $WWWROOT/$mirror does not exist"
+    exit 1
 else
-	WWWROOT=$WWWROOT/$mirror
-	CACHEROOT=$CACHEROOT/$mirror
-	CACHETMPDIR=$CACHETMPDIR/$mirror
+    WWWROOT=$WWWROOT/$mirror
+    CACHEROOT=$CACHEROOT/$mirror
+    CACHETMPDIR=$CACHETMPDIR/$mirror
 fi
 
 if [ -f "$LOGDIR/tocache-$today" ]; then
-	tocache_list=$LOGDIR/tocache-$today
+    tocache_list=$LOGDIR/tocache-$today
 else # today's cron has not run...
-	tocache_list=$LOGDIR/tocache-$(date --date="1 day ago" '+%Y%m%d') 
+    tocache_list=$LOGDIR/tocache-$(date --date="1 day ago" '+%Y%m%d') 
 fi
 
 if [ -z "$mirror" ]; then # full update
-	sync_from_file_list $tocache_list
+    sync_from_file_list $tocache_list
 else # update one mirror
-	tmpfile=$(mktemp)
-	cat $tocache_list | grep "^/$mirror/" | cut -c $((${#mirror}+2))- >$tmpfile
-	sync_from_file_list $tmpfile
-	rm -f $tmpfile
+    tmpfile=$(mktemp)
+    grep "^/$mirror/" $tocache_list | cut -c $((${#mirror}+2))- >$tmpfile
+    sync_from_file_list $tmpfile
+    rm -f $tmpfile
 fi
 

@@ -15,8 +15,8 @@ function atomic_cp()
     # 1. $oriabspath stands for the *REAL* path of $dstfile
     # 2. if original file is a link
     #        if the file that is pointed to hasn't been cached
-    #            copy the original file and the dirs that contains it to ssd-cache
-    #            copy the original link(path should be relative) to destination
+    #            copy the original file and the dirs that contains it to SSD
+    #            create a link(absolute path) on dest
     #        elif the file has been cached
     #            create the link
     #    elif original file is an ordinary file
@@ -36,20 +36,20 @@ function atomic_cp()
         ORIGINROOT+="$repo" # e.g $ORIGINROOT = /mnt/repo/ubuntu-releases/
 
         linktoname="${oriabspath#$ORIGINROOT}" # e.g $linktoname = .pool/ubuntu-14.04.2-desktop-amd64.iso
+
+        if [[ $linktoname == *mnt* ]]; then
+            echo "-------------Wrong Path---------------" >>/tmp/wrongpath.log
+            echo "linktoname: $linktoname" >>/tmp/wrongpath.log
+            echo "source: $1" >>/tmp/wrongpath.log
+            echo "destination: $2" >>/tmp/wrongpath.log
+            echo "dstfile: $dstfile" >>/tmp/wrongpath.log
+            echo "repo: $repo" >>/tmp/wrongpath.log
+            echo "oriabspath: $oriabspath" >>/tmp/wrongpath.log
+            echo "ORIGINROOT: $ORIGINROOT" >>/tmp/wrongpath.log
+            return
+        fi
+
         if [ ! -f $CACHEROOT$repo$linktoname ]; then
-
-            if [[ $linktoname == *mnt* ]]; then
-                echo "-------------Wrong Path---------------" >>/tmp/wrongpath.log
-                echo "linktoname: $linktoname" >>/tmp/wrongpath.log
-                echo "source: $1" >>/tmp/wrongpath.log
-                echo "destination: $2" >>/tmp/wrongpath.log
-                echo "dstfile: $dstfile" >>/tmp/wrongpath.log
-                echo "repo: $repo" >>/tmp/wrongpath.log
-                echo "oriabspath: $oriabspath" >>/tmp/wrongpath.log
-                echo "ORIGINROOT: $ORIGINROOT" >>/tmp/wrongpath.log
-                return
-            fi
-
             linktodir="$(dirname $CACHEROOT$repo$linktoname)"
             [ ! -d "$linktodir" ] && mkdir -p "$linktodir"
 
