@@ -11,13 +11,12 @@ if [ ! -d "$CACHEROOT" ] || [ ! -d "$WWWROOT" ]; then
 fi
 
 tmpfile=$(mktemp)
-sort -u $1 | \
 while read filepath; do
     watchdir="${filepath%/*}"
     # watch IN_MODIFY to fit non-standard sync scripts
         # tradeoff: rsync will write temp files many times, generating many false events
     echo $WWWROOT$watchdir IN_MODIFY,IN_DELETE,IN_MOVE rm -rf $CACHEROOT$watchdir/\$#
-done >$tmpfile
+done <$1 | sort -u >$tmpfile
 
 incrontab $tmpfile 2>&1
 rm -f $tmpfile
