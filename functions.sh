@@ -184,7 +184,7 @@ function sync_from_file_list()
 
     echo_timestamp
 
-    echo $CACHEROOT $(date '+%T') >>/tmp.load.log
-    echo "$(df -h /dev/sdb)" >>/tmp.load.log
+    echo $CACHEROOT $(date '+%T') >>/tmp/load.log
+    echo "$(df -h /dev/sdb)" >>/tmp/load.log
     rm -f $LOCKFILE
 }
