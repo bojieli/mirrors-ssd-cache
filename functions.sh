@@ -7,9 +7,7 @@ function timestamp()
 function atomic_cp()
 {
     dstdir="$(dirname $2)"
-    if [ ! -d "$dstdir" ]; then
-        mkdir -p "$dstdir"
-    fi
+    [ ! -d "$dstdir" ] && mkdir -p "$dstdir"
 
     ##### Explanation
     # 1. $oriabspath stands for the *REAL* path of $dstfile
@@ -37,17 +35,7 @@ function atomic_cp()
 
         linktoname="${oriabspath#$ORIGINROOT}" # e.g $linktoname = .pool/ubuntu-14.04.2-desktop-amd64.iso
 
-        if [[ $linktoname == *mnt* ]]; then
-            echo "-------------Wrong Path---------------" >>/tmp/wrongpath.log
-            echo "linktoname: $linktoname" >>/tmp/wrongpath.log
-            echo "source: $1" >>/tmp/wrongpath.log
-            echo "destination: $2" >>/tmp/wrongpath.log
-            echo "dstfile: $dstfile" >>/tmp/wrongpath.log
-            echo "repo: $repo" >>/tmp/wrongpath.log
-            echo "oriabspath: $oriabspath" >>/tmp/wrongpath.log
-            echo "ORIGINROOT: $ORIGINROOT" >>/tmp/wrongpath.log
-            return
-        fi
+        [[ $linktoname == *mnt* ]] && return
 
         if [ ! -f $CACHEROOT$repo$linktoname ]; then
             linktodir="$(dirname $CACHEROOT$repo$linktoname)"
@@ -92,7 +80,7 @@ function remove_uncached_files()
         echo $f
         rm -rf "$CACHEROOT$f"
     done
-    #rm $tmpfile
+    rm $tmpfile
 }
 function remove_expired_files()
 {
@@ -123,10 +111,6 @@ function echo_timestamp()
 #
 function sync_from_file_list()
 {
-    # ensure that $CACHEROOT and $WWWROOT dont end with '/'
-    CACHEROOT="${CACHEROOT%/}"
-    WWWROOT="${WWWROOT%/}"
-
     cache_list=$1
     if [ ! -f "$cache_list" ]; then
         echo "cache list $cache_list does not exist"
@@ -136,8 +120,10 @@ function sync_from_file_list()
         echo "WWWROOT $WWWROOT does not exist"
         exit 1
     fi
-    mkdir -p $CACHEROOT
-    mkdir -p $CACHETMPDIR
+    if [ ! -d "$CACHEROOT" ]; then
+        echo "CACHEROOT $CACHEROOT does not exist"
+        exit 1
+    fi
 
     LOCKFILE=$CACHETMPDIR/sync.lock
     lockfile -r0 -l 86400 $LOCKFILE 2>/dev/null
@@ -145,13 +131,10 @@ function sync_from_file_list()
         echo_timestamp
         echo "===== Waiting for $LOCKFILE ====="
         lockfile -r-1 -l 86400 $LOCKFILE
-        if [[ 0 -ne "$?" ]]; then
-            exit 1
-        fi
+        [[ 0 -ne "$?" ]] && exit 1
     fi
 
     echo_timestamp
-
     echo "===== Removing no longer cached (swapped out) files ====="
     remove_uncached_files $cache_list
 
@@ -160,14 +143,16 @@ function sync_from_file_list()
     remove_expired_files
 
     echo_timestamp
-
     echo "===== Removing broken links ====="
     find $CACHEROOT -type l -xtype l -print -delete
 
     echo_timestamp
+    echo "===== Removing empty dirs ====="
+    find $CACHEROOT -type d -empty -print -delete
 
+    echo_timestamp
     echo "===== Synchronizing new files ====="
-    cat $cache_list | while read f; do
+    while read f; do
         # source file not exist or is a directory
         [ ! -f "$WWWROOT$f" ] && continue
 
@@ -180,11 +165,8 @@ function sync_from_file_list()
             atomic_cp $WWWROOT$f $CACHEROOT$f
         fi
         # cached but expired files have been removed
-    done
+    done < $cache_list
 
     echo_timestamp
-
-    echo $CACHEROOT $(date '+%T') >>/tmp/load.log
-    echo "$(df -h /dev/sdb)" >>/tmp/load.log
     rm -f $LOCKFILE
 }
