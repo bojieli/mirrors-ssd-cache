@@ -24,9 +24,8 @@ function atomic_cp()
     if [ -L "$1" ]; then
         # $mirror defined in update-cache.sh
         if [[ -z $mirror ]]; then
-            dstfile="${2#$CACHEROOT}" # e.g $dstfile = /ubuntu-releases/14.04.2/ubuntu-14.04.2-desktop-amd64.iso
-            t="${dstfile#/*/}" # e.g $t = 14.04.2/ubuntu-14.04.2-desktop-amd64.iso
-            repo="${dstfile%$t}" # e.g $repo = /ubuntu-releases/
+            # get repo name. archlinux, ubuntu-releases, debian etc.
+            [[ $2 =~ $CACHEROOT(/[^/]+/) ]] && repo=${BASH_REMATCH[1]}
         else
             repo="/$mirror/"
         fi
