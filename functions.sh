@@ -22,20 +22,34 @@ function atomic_cp()
     #####
 
     if [ -L "$1" ]; then
-        dstfile="${2#$CACHEROOT}" # e.g $dstfile = /ubuntu-releases/14.04.2/ubuntu-14.04.2-desktop-amd64.iso
-        t="${dstfile#/*/}" # e.g $t = 14.04.2/ubuntu-14.04.2-desktop-amd64.iso
-        repo="${dstfile%$t}" # e.g $repo = /ubuntu-releases/
-        dstfile="$t"
+        # $mirror defined in update-cache.sh
+        if [[ -z $mirror ]]; then
+            dstfile="${2#$CACHEROOT}" # e.g $dstfile = /ubuntu-releases/14.04.2/ubuntu-14.04.2-desktop-amd64.iso
+            t="${dstfile#/*/}" # e.g $t = 14.04.2/ubuntu-14.04.2-desktop-amd64.iso
+            repo="${dstfile%$t}" # e.g $repo = /ubuntu-releases/
+        else
+            repo="/$mirror/"
+        fi
 
         local oriabspath="$(readlink -e $1)" # e.g $oriabspath = /mnt/repo/ubuntu-releases/.pool/ubuntu-14.04.2-desktop-amd64.iso
         [[ -z $oriabspath ]] && return
 
         ORIGINROOT="${oriabspath%%$repo*}"
-        ORIGINROOT+="$repo" # e.g $ORIGINROOT = /mnt/repo/ubuntu-releases/
+        ORIGINROOT="$ORIGINROOT$repo" # e.g $ORIGINROOT = /mnt/repo/ubuntu-releases/
 
         linktoname="${oriabspath#$ORIGINROOT}" # e.g $linktoname = .pool/ubuntu-14.04.2-desktop-amd64.iso
 
-        [[ $linktoname == *mnt* ]] && return
+        if [[ $linktoname == /mnt* ]]; then
+            {
+                echo "CACHEROOT: $CACHEROOT"
+                echo "ORIGINROOT: $ORIGINROOT"
+                echo "linktoname: $linktoname"
+                echo "repo: $repo"
+            } > /tmp/wrongpath.log
+            return
+        fi
+
+        [[ -n $mirror ]] && repo="/"
 
         if [ ! -f $CACHEROOT$repo$linktoname ]; then
             linktodir="$(dirname $CACHEROOT$repo$linktoname)"
