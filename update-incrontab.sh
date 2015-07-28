@@ -10,7 +10,7 @@ if [ ! -d "$CACHEROOT" ] || [ ! -d "$WWWROOT" ]; then
     exit 1
 fi
 
-tmpfile=$(mktemp)
+tmpfile=$(mktemp -p /tmp incron.XXXXXXX)
 while read filepath; do
     watchdir="${filepath%/*}"
     # watch IN_MODIFY to fit non-standard sync scripts
