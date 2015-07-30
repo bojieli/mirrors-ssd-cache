@@ -44,7 +44,7 @@ function atomic_cp()
                 echo "ORIGINROOT: $ORIGINROOT"
                 echo "linktoname: $linktoname"
                 echo "repo: $repo"
-            } > /tmp/wrongpath.log
+            } >> /tmp/wrongpath.log
             return
         fi
 
