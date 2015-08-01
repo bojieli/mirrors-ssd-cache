@@ -78,12 +78,12 @@ function remove_uncached_files()
 {
     local tmpfile="$(mktemp --tmpdir=$CACHETMPDIR keep.XXXXXXXXXX)"
     cp $1 $tmpfile
-    cat $1 | while read f; do
+    while read f; do
         if [ -L "$CACHEROOT$f" ]; then
             local oriabspath="$(readlink -e $CACHEROOT$f)"
             [ -n "$oriabspath" ] && echo "${oriabspath#$CACHEROOT}" >> $tmpfile
         fi
-    done
+    done < $1
 
     diff --old-line-format='' --new-line-format='%L' --unchanged-line-format='' \
         <(cat $tmpfile | sort -u) \
