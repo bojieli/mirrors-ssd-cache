@@ -138,6 +138,7 @@ function sync_from_file_list()
         exit 1
     fi
 
+    [[ ! -d $CACHETMPDIR ]] && mkdir -p "$CACHETMPDIR"
     LOCKFILE=$CACHETMPDIR/sync.lock
     lockfile -r0 -l 86400 $LOCKFILE 2>/dev/null
     if [[ 0 -ne "$?" ]]; then
