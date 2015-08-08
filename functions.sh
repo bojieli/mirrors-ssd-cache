@@ -40,10 +40,14 @@ function atomic_cp()
 
         if [[ $linktoname == /mnt* ]]; then
             {
+                echo "-----------8<---------------"
+                echo "src: $1"
+                echo "dst: $2"
+                echo "repo: $repo"
                 echo "CACHEROOT: $CACHEROOT"
                 echo "ORIGINROOT: $ORIGINROOT"
                 echo "linktoname: $linktoname"
-                echo "repo: $repo"
+                echo "-----------8<---------------"
             } >> /tmp/wrongpath.log
             return
         fi
