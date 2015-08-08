@@ -157,14 +157,6 @@ function sync_from_file_list()
     remove_expired_files
 
     echo_timestamp
-    echo "===== Removing broken links ====="
-    find $CACHEROOT -type l -xtype l -print -delete
-
-    echo_timestamp
-    echo "===== Removing empty dirs ====="
-    find $CACHEROOT -type d -empty -print -delete
-
-    echo_timestamp
     echo "===== Synchronizing new files ====="
     while read f; do
         # source file not exist or is a directory
@@ -180,6 +172,14 @@ function sync_from_file_list()
         fi
         # cached but expired files have been removed
     done < $cache_list
+
+    echo_timestamp
+    echo "===== Removing empty dirs ====="
+    find $CACHEROOT -type d -empty -print -delete
+
+    echo_timestamp
+    echo "===== Removing broken links ====="
+    find $CACHEROOT -type l -xtype l -print -delete
 
     echo_timestamp
     rm -f $LOCKFILE
