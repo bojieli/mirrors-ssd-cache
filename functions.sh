@@ -40,10 +40,14 @@ function atomic_cp()
 
         if [[ $linktoname == /mnt* ]]; then
             {
+                echo "-----------8<---------------"
+                echo "src: $1"
+                echo "dst: $2"
+                echo "repo: $repo"
                 echo "CACHEROOT: $CACHEROOT"
                 echo "ORIGINROOT: $ORIGINROOT"
                 echo "linktoname: $linktoname"
-                echo "repo: $repo"
+                echo "-----------8<---------------"
             } >> /tmp/wrongpath.log
             return
         fi
@@ -138,6 +142,7 @@ function sync_from_file_list()
         exit 1
     fi
 
+    [[ ! -d $CACHETMPDIR ]] && mkdir -p "$CACHETMPDIR"
     LOCKFILE=$CACHETMPDIR/sync.lock
     lockfile -r0 -l 86400 $LOCKFILE 2>/dev/null
     if [[ 0 -ne "$?" ]]; then
@@ -156,14 +161,6 @@ function sync_from_file_list()
     remove_expired_files
 
     echo_timestamp
-    echo "===== Removing broken links ====="
-    find $CACHEROOT -type l -xtype l -print -delete
-
-    echo_timestamp
-    echo "===== Removing empty dirs ====="
-    find $CACHEROOT -type d -empty -print -delete
-
-    echo_timestamp
     echo "===== Synchronizing new files ====="
     while read f; do
         # source file not exist or is a directory
@@ -179,6 +176,14 @@ function sync_from_file_list()
         fi
         # cached but expired files have been removed
     done < $cache_list
+
+    echo_timestamp
+    echo "===== Removing empty dirs ====="
+    find $CACHEROOT -type d -empty -print -delete
+
+    echo_timestamp
+    echo "===== Removing broken links ====="
+    find $CACHEROOT -type l -xtype l -print -delete
 
     echo_timestamp
     rm -f $LOCKFILE
