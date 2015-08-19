@@ -4,54 +4,66 @@ function timestamp()
     stat -L -c '%Y' $1
 }
 
-function parselink()
-{
-    local orilink="$1"
-    local content="$(readlink $1)"
-    if [[ $content == .* ]]; then
-        # relative path
-        echo "$(dirname $orilink)/$content"
-    else
-        # absolute path
-        echo "$content"
-    fi
-}
-
 function atomic_cp()
 {
-    local dstdir="$(dirname $2)"
+    dstdir="$(dirname $2)"
     [ ! -d "$dstdir" ] && mkdir -p "$dstdir"
+
     ##### Explanation
-    # 1. $linktofile stands for the path of $dstfile in $CACHEROOT
+    # 1. $oriabspath stands for the *REAL* path of $dstfile
     # 2. if original file is a link
     #        if the file that is pointed to hasn't been cached
-    #            create the dir that contains it in SSD and copy the original file to the dir
-    #            copy the original link
+    #            copy the original file and the dirs that contains it to SSD
+    #            create a link(absolute path) on dest
     #        elif the file has been cached
-    #            copy the original link
+    #            create the link
     #    elif original file is an ordinary file
     #        copy
     #####
 
     if [ -L "$1" ]; then
-
-        local linktofile="$(parselink $2)"
-
-        if [[ ! -e $linktofile ]]; then
-            local containdir="$(dirname $linktofile)"
-            [[ ! -d $containdir ]] && mkdir -p "$containdir"
-
-            local tmpfile="$(mktemp --tmpdir=$CACHETMPDIR)"
-            cp --preserve=all -L "$1" "$tmpfile"
-            mv "$tmpfile" "$linktofile"
-            #local tmpfile="$(mktemp -u --tmpdir=$CACHETMPDIR)"
-            #echo cp --preserve=all -L "$1" "$tmpfile"
-            #echo mv "$tmpfile" "$linktofile"
+        # $mirror defined in update-cache.sh
+        if [[ -z $mirror ]]; then
+            # get repo name. archlinux, ubuntu-releases, debian etc.
+            [[ $2 =~ $CACHEROOT(/[^/]+/) ]] && repo=${BASH_REMATCH[1]}
+        else
+            repo="/$mirror/"
         fi
 
-        # copy link
-        cp -P --preserve=all "$1" "$2"
-        #echo cp -P --preserve=all "$1" "$2"
+        local oriabspath="$(readlink -e $1)" # e.g $oriabspath = /mnt/repo/ubuntu-releases/.pool/ubuntu-14.04.2-desktop-amd64.iso
+        [[ -z $oriabspath ]] && return
+
+        ORIGINROOT="${oriabspath%%$repo*}"
+        ORIGINROOT="$ORIGINROOT$repo" # e.g $ORIGINROOT = /mnt/repo/ubuntu-releases/
+
+        linktoname="${oriabspath#$ORIGINROOT}" # e.g $linktoname = .pool/ubuntu-14.04.2-desktop-amd64.iso
+
+        if [[ $linktoname == /mnt* ]]; then
+            {
+                echo "CACHEROOT: $CACHEROOT"
+                echo "ORIGINROOT: $ORIGINROOT"
+                echo "linktoname: $linktoname"
+                echo "repo: $repo"
+            } >> /tmp/wrongpath.log
+            return
+        fi
+
+        [[ -n $mirror ]] && repo="/"
+
+        if [ ! -f $CACHEROOT$repo$linktoname ]; then
+            linktodir="$(dirname $CACHEROOT$repo$linktoname)"
+            [ ! -d "$linktodir" ] && mkdir -p "$linktodir"
+
+            local tmpfile="$(mktemp --tmpdir=$CACHETMPDIR)"
+            #local tmpfile="$(mktemp -u --tmpdir=$CACHETMPDIR)"
+            cp --preserve=all $oriabspath $tmpfile
+            mv $tmpfile $CACHEROOT$repo$linktoname
+            #echo "cp --preserve=all $oriabspath $tmpfile"
+            #echo "mv $tmpfile $CACHEROOT$repo$linktoname"
+        fi
+        ln -sf $CACHEROOT$repo$linktoname $2
+        #echo ln -sf $CACHEROOT$repo$linktoname $2
+
     else
         local tmpfile="$(mktemp --tmpdir=$CACHETMPDIR)"
         #local tmpfile="$(mktemp -u --tmpdir=$CACHETMPDIR)"
@@ -68,8 +80,8 @@ function remove_uncached_files()
     cp $1 $tmpfile
     while read f; do
         if [ -L "$CACHEROOT$f" ]; then
-            local abspath="$(readlink -e $CACHEROOT$f)"
-            [ -n "$abspath" ] && echo "${abspath#$CACHEROOT}" >> $tmpfile
+            local oriabspath="$(readlink -e $CACHEROOT$f)"
+            [ -n "$oriabspath" ] && echo "${oriabspath#$CACHEROOT}" >> $tmpfile
         fi
     done < $1
 
@@ -148,6 +160,10 @@ function sync_from_file_list()
     find $CACHEROOT -type l -xtype l -print -delete
 
     echo_timestamp
+    echo "===== Removing empty dirs ====="
+    find $CACHEROOT -type d -empty -print -delete
+
+    echo_timestamp
     echo "===== Synchronizing new files ====="
     while read f; do
         # source file not exist or is a directory
@@ -163,10 +179,6 @@ function sync_from_file_list()
         fi
         # cached but expired files have been removed
     done < $cache_list
-
-    echo_timestamp
-    echo "===== Removing empty dirs ====="
-    find $CACHEROOT -type d -empty -print -delete
 
     echo_timestamp
     rm -f $LOCKFILE
