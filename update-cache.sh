@@ -34,6 +34,5 @@ else # update one mirror
     trap "rm -f $tmpfile" EXIT
     grep "^/$mirror" $tocache_list | cut -c $((${#mirror}+2))- >$tmpfile
     sync_from_file_list $tmpfile
-    #rm -f $tmpfile
 fi
 
