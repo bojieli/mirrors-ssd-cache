@@ -1,7 +1,7 @@
 #!/bin/bash
 function timestamp()
 {
-    stat -L -c '%Y' $1
+    stat -L -c '%Y' $1 &> /dev/null
 }
 
 function parselink()
@@ -17,10 +17,18 @@ function parselink()
     fi
 }
 
+function log_error()
+{
+    while read msg; do
+        echo $(date '+[%F %T]') $msg
+    done
+}
+
 function atomic_cp()
 {
     local dstdir="$(dirname $2)"
-    [ ! -d "$dstdir" ] && mkdir -p "$dstdir"
+    [[  -d $dstdir ]] || mkdir -p "$dstdir"
+
     ##### Explanation
     # 1. $linktofile stands for the path of $dstfile in $CACHEROOT
     # 2. if original file is a link
@@ -33,18 +41,22 @@ function atomic_cp()
     #        copy
     #####
 
-    if [ -L "$1" ]; then
+    local errorlog="/tmp/ssd-cache.log"
 
+    if [[ -L $1 ]]; then
         local linktofile="$(parselink $1)"
-        linktofile="$CACHEROOT/${linktofile#$WWWROOT}"
 
-        if [[ ! -e $linktofile ]]; then
-            local containdir="$(dirname $linktofile)"
-            [[ ! -d $containdir ]] && mkdir -p "$containdir"
+        [[ -L $linktofile ]] && atomic_cp $linktofile $2
+
+        local cachefile="$CACHEROOT/${linktofile#$WWWROOT}"
+
+        if [[ ! -e $cachefile ]]; then
+            local containdir="$(dirname $cachefile)"
+            [[ -d $containdir ]] || mkdir -p "$containdir"
 
             local tmpfile="$(mktemp --tmpdir=$CACHETMPDIR)"
-            cp --preserve=all -L "$1" "$tmpfile"
-            mv "$tmpfile" "$linktofile"
+            cp --preserve=all "$linktofile" "$tmpfile" 2> >(log_error >> "$errorlog")
+            mv "$tmpfile" "$cachefile" 2> >(log_error >> "$errorlog")
             #local tmpfile="$(mktemp -u --tmpdir=$CACHETMPDIR)"
             #echo cp --preserve=all -L "$1" "$tmpfile"
             #echo mv "$tmpfile" "$linktofile"
@@ -56,8 +68,8 @@ function atomic_cp()
     else
         local tmpfile="$(mktemp --tmpdir=$CACHETMPDIR)"
         #local tmpfile="$(mktemp -u --tmpdir=$CACHETMPDIR)"
-        cp --preserve=all $1 $tmpfile
-        mv $tmpfile $2
+        cp --preserve=all $1 $tmpfile 2> >(log_error >> "$errorlog")
+        mv $tmpfile $2 2> >(log_error >> "$errorlog")
         #echo "cp --preserve=all $1 $tmpfile"
         #echo "mv $tmpfile $2"
     fi
