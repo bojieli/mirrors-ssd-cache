@@ -57,3 +57,5 @@ unset FileSet
 $(dirname $0)/update-incrontab.sh $filelist
 
 sync_from_file_list $filelist
+
+df -h /dev/sdb
