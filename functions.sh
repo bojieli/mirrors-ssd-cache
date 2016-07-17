@@ -1,11 +1,9 @@
 #!/bin/bash
-function timestamp()
-{
-    stat -L -c '%Y' $1 &> /dev/null
+timestamp() {
+    stat -Lc '%Y' "$1" 2> /dev/null
 }
 
-function parselink()
-{
+parselink() {
     local orilink="$1"
     local content="$(readlink $1)"
     if [[ $content != /* ]]; then
@@ -17,15 +15,13 @@ function parselink()
     fi
 }
 
-function log_error()
-{
+log_error() {
     while read msg; do
         echo $(date '+[%F %T]') $msg
     done
 }
 
-function atomic_cp()
-{
+atomic_cp() {
     local dstdir="$(dirname $2)"
     [[  -d $dstdir ]] || mkdir -p "$dstdir"
 
@@ -46,7 +42,7 @@ function atomic_cp()
     if [[ -L $1 ]]; then
         local linktofile="$(parselink $1)"
 
-        [[ -L $linktofile ]] && atomic_cp $linktofile $2
+        [[ -L $linktofile ]] && atomic_cp "$linktofile" "$2"
 
         local cachefile="$CACHEROOT/${linktofile#$WWWROOT}"
 
@@ -56,6 +52,7 @@ function atomic_cp()
 
             local tmpfile="$(mktemp --tmpdir=$CACHETMPDIR)"
             cp --preserve=all "$linktofile" "$tmpfile" 2> >(log_error >> "$errorlog")
+            [[ $? -ne 0 ]] && rm "$tmpfile" && return
             mv "$tmpfile" "$cachefile" 2> >(log_error >> "$errorlog")
             #local tmpfile="$(mktemp -u --tmpdir=$CACHETMPDIR)"
             #echo cp --preserve=all -L "$1" "$tmpfile"
@@ -68,21 +65,21 @@ function atomic_cp()
     else
         local tmpfile="$(mktemp --tmpdir=$CACHETMPDIR)"
         #local tmpfile="$(mktemp -u --tmpdir=$CACHETMPDIR)"
-        cp --preserve=all $1 $tmpfile 2> >(log_error >> "$errorlog")
-        mv $tmpfile $2 2> >(log_error >> "$errorlog")
+        cp --preserve=all "$1" "$tmpfile" 2> >(log_error >> "$errorlog")
+        [[ $? -ne 0 ]] && rm "$tmpfile" && return
+        mv "$tmpfile" "$2" 2> >(log_error >> "$errorlog")
         #echo "cp --preserve=all $1 $tmpfile"
         #echo "mv $tmpfile $2"
     fi
 }
 
-function remove_uncached_files()
-{
+remove_uncached_files() {
     local tmpfile="$(mktemp --tmpdir=$CACHETMPDIR keep.XXXXXXXXXX)"
     cp $1 $tmpfile
     while read f; do
-        if [ -L "$CACHEROOT$f" ]; then
+        if [[ -L $CACHEROOT$f ]]; then
             local abspath="$(readlink -e $CACHEROOT$f)"
-            [ -n "$abspath" ] && echo "${abspath#$CACHEROOT}" >> $tmpfile
+            [[ -n $abspath ]] && echo "${abspath#$CACHEROOT}" >> $tmpfile
         fi
     done < $1
 
@@ -90,17 +87,15 @@ function remove_uncached_files()
         <(cat $tmpfile | sort -u) \
         <(find $CACHEROOT -type f -o -type l | cut -c $((${#CACHEROOT}+1))- | sort -u) \
     | while read f; do
-
         echo $f
         rm -rf "$CACHEROOT$f"
     done
     rm $tmpfile
 }
-function remove_expired_files()
-{
+remove_expired_files() {
     find $CACHEROOT -type f -o -type l | cut -c $((${#CACHEROOT}+1))- \
     | while read f; do
-        if [ -f "$WWWROOT$f" ] && [ "$(timestamp $WWWROOT$f)" == "$(timestamp $CACHEROOT$f)" ]; then
+        if [[ -f $WWWROOT$f ]] && [ "$(timestamp $WWWROOT$f)" == "$(timestamp $CACHEROOT$f)" ]; then
             continue
         fi
 
@@ -108,8 +103,7 @@ function remove_expired_files()
         rm -rf "$CACHEROOT$f"
     done
 }
-function echo_timestamp()
-{
+echo_timestamp() {
     date '+===== TIMESTAMP %s %F %T ====='
 }
 
@@ -123,34 +117,33 @@ function echo_timestamp()
 #  2. Remove files in CACHEROOT but not in WWWROOT or not up-to-date
 #  3. Copy non-cached files in cache_list to CACHEROOT, if it exists in WWWROOT
 #
-function sync_from_file_list()
-{
+sync_from_file_list() {
     cache_list=$1
-    if [ ! -f "$cache_list" ]; then
+    if [[ ! -f $cache_list ]]; then
         echo "cache list $cache_list does not exist"
         exit 1
     fi
-    if [ ! -d "$WWWROOT" ]; then
+    if [[ ! -d $WWWROOT ]]; then
         echo "WWWROOT $WWWROOT does not exist"
         exit 1
     fi
-    if [ ! -d "$CACHEROOT" ]; then
+    if [[ ! -d $CACHEROOT ]]; then
         echo "CACHEROOT $CACHEROOT does not exist"
         exit 1
     fi
 
     LOCKFILE=$CACHETMPDIR/sync.lock
     lockfile -r0 -l 86400 $LOCKFILE 2>/dev/null
-    if [[ 0 -ne "$?" ]]; then
+    if [[ 0 -ne $? ]]; then
         echo_timestamp
         echo "===== Waiting for $LOCKFILE ====="
         lockfile -r-1 -l 86400 $LOCKFILE
-        [[ 0 -ne "$?" ]] && exit 1
+        [[ 0 -ne $? ]] && exit 1
     fi
 
     echo_timestamp
     echo "===== Removing no longer cached (swapped out) files ====="
-    remove_uncached_files $cache_list
+    remove_uncached_files "$cache_list"
 
     echo_timestamp
     echo "===== Removing expired files ====="
@@ -158,24 +151,24 @@ function sync_from_file_list()
 
     echo_timestamp
     echo "===== Removing broken links ====="
-    find $CACHEROOT -type l -xtype l -print -delete
+    find "$CACHEROOT" -type l -xtype l -print -delete
 
     echo_timestamp
     echo "===== Synchronizing new files ====="
     while read f; do
         # source file not exist or is a directory
-        [ ! -f "$WWWROOT$f" ] && continue
+        [[ ! -f $WWWROOT$f ]] && continue
 
         # it was a directory, now a file
-        [ -d "$CACHEROOT$f" ] && rm -rf $CACHEROOT$f
+        [[ -d $CACHEROOT$f ]] && rm -rf "$CACHEROOT$f"
 
         # file not cached
-        if [ ! -f "$CACHEROOT$f" ]; then
+        if [[ ! -f $CACHEROOT$f ]]; then
             echo $f
-            atomic_cp $WWWROOT$f $CACHEROOT$f
+            atomic_cp "$WWWROOT$f" "$CACHEROOT$f"
         fi
         # cached but expired files have been removed
-    done < $cache_list
+    done < "$cache_list"
 
     echo_timestamp
     echo "===== Removing empty dirs ====="
